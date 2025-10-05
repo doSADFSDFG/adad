@@ -61,8 +61,7 @@ class _TableCardState extends ConsumerState<TableCard> {
   Widget build(BuildContext context) {
     final formattedTotal = NumberFormat('#,###').format(widget.model.snapshot.total);
     final items = widget.model.snapshot.items;
-    final drinkItems =
-        items.where((item) => item.categoryName == _drinkCategoryName).toList();
+    final drinkItems = _drinkItems(items);
     final summary = () {
       if (items.isEmpty) {
         return '주문 없음';
@@ -71,7 +70,6 @@ class _TableCardState extends ConsumerState<TableCard> {
         return '주류 주문 없음';
       }
       return drinkItems
-          .take(3)
           .map((item) => '${item.name} x${item.quantity}')
           .join('\n');
     }();
@@ -234,7 +232,7 @@ class _TableCardState extends ConsumerState<TableCard> {
     }
 
     _overlayEntry = OverlayEntry(builder: (context) {
-      final items = widget.model.snapshot.items;
+      final items = _drinkItems(widget.model.snapshot.items);
       final numberFormat = NumberFormat('#,###');
       return IgnorePointer(
         child: Container(
@@ -243,7 +241,7 @@ class _TableCardState extends ConsumerState<TableCard> {
           child: Material(
             color: Colors.transparent,
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 460, maxHeight: 520),
+              constraints: const BoxConstraints(maxWidth: 620, maxHeight: 520),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.96),
                 borderRadius: BorderRadius.circular(36),
@@ -277,7 +275,7 @@ class _TableCardState extends ConsumerState<TableCard> {
                       child: items.isEmpty
                           ? const Center(
                               child: Text(
-                                '주문 항목이 없습니다.',
+                                '주류 주문 항목이 없습니다.',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
@@ -292,46 +290,79 @@ class _TableCardState extends ConsumerState<TableCard> {
                                     .withOpacity(0.25),
                                 borderRadius: BorderRadius.circular(24),
                               ),
-                              child: ListView.separated(
-                                shrinkWrap: true,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                itemCount: items.length,
-                                separatorBuilder: (_, __) => Divider(
-                                  height: 1,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.2),
+                              child: ScrollConfiguration(
+                                behavior: const MaterialScrollBehavior().copyWith(
+                                  dragDevices: {
+                                    PointerDeviceKind.touch,
+                                    PointerDeviceKind.mouse,
+                                  },
                                 ),
-                                itemBuilder: (context, index) {
-                                  final item = items[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 22,
-                                      vertical: 14,
+                                child: Scrollbar(
+                                  thumbVisibility: true,
+                                  child: GridView.builder(
+                                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                                    gridDelegate:
+                                        const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 3,
+                                      mainAxisSpacing: 16,
+                                      crossAxisSpacing: 16,
+                                      childAspectRatio: 1.9,
                                     ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            item.name,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w800,
+                                    itemCount: items.length,
+                                    itemBuilder: (context, index) {
+                                      final item = items[index];
+                                      return DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(22),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.04),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 6),
                                             ),
+                                          ],
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.name,
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const Spacer(),
+                                              Text(
+                                                'x${item.quantity}',
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '\u20a9${numberFormat.format(item.total)}',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        Text(
-                                          'x${item.quantity}',
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
                             ),
                     ),
@@ -358,5 +389,9 @@ class _TableCardState extends ConsumerState<TableCard> {
   void _hideOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+  }
+
+  List<TableOrderItem> _drinkItems(List<TableOrderItem> items) {
+    return items.where((item) => item.categoryName == _drinkCategoryName).toList();
   }
 }
